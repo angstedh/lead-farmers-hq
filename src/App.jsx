@@ -444,10 +444,6 @@ function ReadingList({ books, setBooks, persist }) {
     if (fileRef.current) fileRef.current.value = "";
     setOpen(false);
   };
-  const remove = (id) => {
-    const next = books.filter((b) => b.id !== id);
-    setBooks(next); persist("books", next);
-  };
   const sorted = [...books].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
   return (
@@ -493,9 +489,6 @@ function ReadingList({ books, setBooks, persist }) {
                   <span className="redact" tabIndex={0}>{b.verdict}<span className="bar" /></span>
                 </div>
               )}
-              <div style={{ marginTop: 10 }}>
-                <button className="btn ghost sm" onClick={() => remove(b.id)}>SCRUB FILE</button>
-              </div>
             </div>
           </div>
         ))}
