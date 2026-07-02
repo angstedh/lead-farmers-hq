@@ -348,7 +348,10 @@ label.fld{display:block; font-family:var(--cond); letter-spacing:.14em; font-siz
 .target-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
 .target-label{font-family:var(--disp); letter-spacing:.05em; font-size:19px; color:var(--blaze-lt)}
 .target-body{display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; margin-top:12px}
-.target-book{flex:1 1 260px; background:var(--tan); color:var(--ink); border:2px solid var(--ink); padding:12px 14px; box-shadow:3px 3px 0 rgba(0,0,0,.4)}
+.target-book{flex:1 1 300px; display:flex; gap:12px; align-items:center; background:var(--tan); color:var(--ink); border:2px solid var(--ink); padding:12px 14px; box-shadow:3px 3px 0 rgba(0,0,0,.4)}
+.target-cover{width:66px; height:96px; object-fit:cover; border:2px solid var(--ink); flex:0 0 auto; background:#15160e}
+.target-cover.empty{display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.15; font-family:var(--cond); font-weight:700; letter-spacing:.08em; font-size:11px; color:var(--bone)}
+.target-info{min-width:0}
 .target-now{font-family:var(--cond); font-weight:700; letter-spacing:.16em; font-size:11px; color:var(--blaze)}
 .target-title{font-family:var(--disp); font-size:24px; line-height:1.06; margin:3px 0 2px}
 .target-author{font-family:var(--cond); letter-spacing:.06em; font-size:14px; color:#3b3623}
@@ -436,15 +439,26 @@ function fmtMeeting(dateStr) {
 function NextTarget({ target, setTarget, persist }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(target);
+  const fileRef = useRef();
   const start = () => { setF(target); setOpen(true); };
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const img = await compressImage(file);
+      setF((p) => ({ ...p, image: img }));
+    } catch {}
+  };
   const save = () => {
     const next = {
       title: (f.title || "").trim(),
       author: (f.author || "").trim(),
+      image: f.image || "",
       meetingDate: f.meetingTBD ? "" : (f.meetingDate || ""),
       meetingTBD: !!f.meetingTBD,
     };
     setTarget(next); persist("target", next); setOpen(false);
+    if (fileRef.current) fileRef.current.value = "";
   };
   const hasTarget = !!(target.title && target.title.trim());
   const meeting = target.meetingTBD ? "TBD" : (target.meetingDate ? fmtMeeting(target.meetingDate) : "TBD");
@@ -461,9 +475,14 @@ function NextTarget({ target, setTarget, persist }) {
           {hasTarget ? (
             <>
               <div className="target-book">
-                <div className="target-now">▸ NOW READING</div>
-                <div className="target-title">{target.title}</div>
-                {target.author && <div className="target-author">{target.author}</div>}
+                {target.image
+                  ? <img className="target-cover" src={target.image} alt={target.title} />
+                  : <div className="target-cover empty">NO<br />COVER</div>}
+                <div className="target-info">
+                  <div className="target-now">▸ NOW READING</div>
+                  <div className="target-title">{target.title}</div>
+                  {target.author && <div className="target-author">{target.author}</div>}
+                </div>
               </div>
               <div className="target-muster">
                 <div className="muster-label">NEXT MUSTER</div>
@@ -481,6 +500,15 @@ function NextTarget({ target, setTarget, persist }) {
           <div className="row">
             <div><label className="fld">CURRENT READ (TITLE)</label><input className="in" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="e.g. Blood Meridian" /></div>
             <div><label className="fld">AUTHOR</label><input className="in" value={f.author} onChange={(e) => setF({ ...f, author: e.target.value })} placeholder="Cormac McCarthy" /></div>
+          </div>
+          <div className="row">
+            <div><label className="fld">COVER IMAGE</label><input ref={fileRef} className="in" type="file" accept="image/*" onChange={onFile} /></div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+              {f.image
+                ? <img src={f.image} alt="preview" style={{ height: 64, border: "2px solid var(--ink)" }} />
+                : <span className="note" style={{ margin: 0 }}>No cover selected.</span>}
+              {f.image && <button className="btn ghost sm" onClick={() => { setF({ ...f, image: "" }); if (fileRef.current) fileRef.current.value = ""; }}>CLEAR</button>}
+            </div>
           </div>
           <div className="row">
             <div>
