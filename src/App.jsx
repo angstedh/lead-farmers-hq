@@ -253,6 +253,16 @@ label.fld{display:block; font-family:var(--cond); letter-spacing:.14em; font-siz
 .redact{position:relative; display:inline-block}
 .redact .bar{position:absolute; inset:0; background:var(--ink); transition:transform .4s ease}
 .redact:hover .bar,.redact:focus-within .bar{transform:translateX(101%)}
+.reviews{margin-top:12px; border-top:1px dashed rgba(59,54,35,.4); padding-top:10px}
+.rate-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.rate-num{font-family:var(--disp); font-size:15px; color:var(--blaze)}
+.rate-count{font-family:var(--cond); letter-spacing:.1em; font-size:11px; color:#6b5e36}
+.rate-form{background:#15160e; border:2px solid var(--olive); padding:12px; margin-top:10px}
+.rate-form .fld{color:var(--tan)}
+.review-list{margin-top:10px; display:flex; flex-direction:column; gap:7px}
+.review{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px}
+.rby{font-family:var(--cond); font-weight:700; letter-spacing:.08em; font-size:11px; color:#3b3623;
+  background:rgba(107,94,54,.18); border:1px solid rgba(59,54,35,.4); padding:1px 6px}
 
 /* meetings */
 .op-card{display:flex; gap:14px; align-items:center; background:#15160e; border:2px solid var(--olive);
@@ -326,6 +336,13 @@ label.fld{display:block; font-family:var(--cond); letter-spacing:.14em; font-siz
   font-family:var(--cond); font-weight:700; letter-spacing:.14em; padding:6px 14px; margin-top:14px;
   box-shadow:3px 3px 0 rgba(0,0,0,.45); font-size:14px}
 .codetag b{color:var(--blaze-lt)}
+.roster{margin-top:14px; background:var(--field2); border:2px solid var(--ink); box-shadow:4px 4px 0 rgba(0,0,0,.4); padding:12px 16px}
+.roster-label{display:block; font-family:var(--cond); font-weight:700; letter-spacing:.14em; font-size:12px; color:var(--blaze-lt); margin-bottom:8px}
+.roster-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; counter-reset:op}
+.roster-list li{display:flex; align-items:baseline; gap:10px; font-family:var(--cond); letter-spacing:.06em; color:var(--bone)}
+.roster-list li::before{counter-increment:op; content:counter(op); font-family:var(--disp); color:var(--blaze); font-size:13px; min-width:16px}
+.roster-list b{color:var(--bone); font-weight:700}
+.roster-when{margin-left:auto; font-size:11px; letter-spacing:.1em; color:var(--steel)}
 
 @media (max-width:560px){ .dossier{flex-direction:column} .cover{width:100%; height:200px} }
 @media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} #boom-layer{display:none} }
@@ -391,6 +408,25 @@ function Foliage() {
   );
 }
 
+/* ============================ CHECK-IN ROSTER ============================ */
+function CheckinRoster({ list = [] }) {
+  if (!list.length) return null;
+  const last5 = list.slice(0, 5);
+  return (
+    <div className="roster">
+      <span className="roster-label">▣ LAST 5 OPERATIVES THROUGH THE WIRE</span>
+      <ol className="roster-list">
+        {last5.map((c, i) => (
+          <li key={c.ts + "-" + i}>
+            <b>{c.name}</b>
+            <span className="roster-when">{relTime(c.ts)}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 /* ============================ ACCESS GATE ============================ */
 function Gate({ onPass }) {
   const [code, setCode] = useState("");
@@ -422,8 +458,97 @@ function Gate({ onPass }) {
   );
 }
 
+/* ============================ GRENADE RATING ============================ */
+let _gid = 0;
+function Grenade({ fill = 0, size = 22 }) {
+  const cid = useRef("gclip" + (++_gid)).current;
+  const shape = (color, stroke) => (
+    <g fill={color} stroke={stroke} strokeWidth="1.1" strokeLinejoin="round">
+      <rect x="9.2" y="2" width="5.6" height="3" rx="1" />
+      <rect x="10.3" y="4.6" width="3.4" height="2.4" />
+      <path d="M9 4 L4.5 2.6 L5.4 6.2" fill="none" strokeWidth="1.3" />
+      <circle cx="12" cy="14.5" r="7.4" />
+      <circle cx="4.3" cy="2.4" r="1.5" fill="none" strokeWidth="1.2" />
+    </g>
+  );
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ verticalAlign: "middle", display: "inline-block" }} aria-hidden="true">
+      <defs><clipPath id={cid}><rect x="0" y="0" width={24 * fill} height="24" /></clipPath></defs>
+      {shape("#241f12", "#6b5e36")}
+      <g clipPath={`url(#${cid})`}>{shape("var(--blaze)", "var(--ink)")}</g>
+    </svg>
+  );
+}
+function grenadeFill(score, i) { return score >= i + 1 ? 1 : score >= i + 0.5 ? 0.5 : 0; }
+function GrenadeMeter({ score = 0, size = 18 }) {
+  return <span style={{ display: "inline-flex", gap: 2 }}>{[0, 1, 2, 3].map((i) => <Grenade key={i} fill={grenadeFill(score, i)} size={size} />)}</span>;
+}
+function GrenadePicker({ value = 0, onChange }) {
+  return (
+    <div style={{ display: "inline-flex", gap: 4 }} role="group" aria-label="Grenade rating">
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          style={{ cursor: "pointer", lineHeight: 0 }}
+          title={`${i + 0.5}-${i + 1} grenades`}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const left = e.clientX - r.left < r.width / 2;
+            onChange(i + (left ? 0.5 : 1));
+          }}
+        >
+          <Grenade fill={grenadeFill(value, i)} size={30} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* one book's grenade score + after-action reviews (redacted until hovered) */
+function BookReviews({ book, onAdd }) {
+  const reviews = book.reviews || [];
+  const avg = reviews.length ? reviews.reduce((s, r) => s + r.score, 0) / reviews.length : 0;
+  const [open, setOpen] = useState(false);
+  const [score, setScore] = useState(0);
+  const [text, setText] = useState("");
+  const submit = () => {
+    if (!score) return;
+    onAdd(book.id, score, text);
+    setScore(0); setText(""); setOpen(false);
+  };
+  return (
+    <div className="reviews">
+      <div className="rate-row">
+        <GrenadeMeter score={Math.round(avg * 2) / 2} />
+        <span className="rate-num">{reviews.length ? avg.toFixed(1) : "—"}/4</span>
+        <span className="rate-count">{reviews.length} REPORT{reviews.length === 1 ? "" : "S"}</span>
+        <button className="btn ghost sm" onClick={() => setOpen((v) => !v)}>{open ? "CANCEL" : "+ RATE"}</button>
+      </div>
+      {open && (
+        <div className="rate-form">
+          <label className="fld">GRENADES · click left half for ½ · 4 = MAXIMUM CARNAGE</label>
+          <div style={{ margin: "4px 0 10px" }}><GrenadePicker value={score} onChange={setScore} /></div>
+          <textarea className="ta" value={text} onChange={(e) => setText(e.target.value)} placeholder="After-action review. Classified until hovered." />
+          <div style={{ marginTop: 10 }}><button className="btn sm" onClick={submit}>FILE REPORT</button></div>
+        </div>
+      )}
+      {reviews.length > 0 && (
+        <div className="review-list">
+          {reviews.slice().sort((a, b) => b.ts - a.ts).map((r) => (
+            <div className="review" key={r.id || r.ts}>
+              <span className="rby">{r.by}</span>
+              <GrenadeMeter score={r.score} size={14} />
+              {r.text && <span className="redact" tabIndex={0}>{r.text}<span className="bar" /></span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============================ READING LIST ============================ */
-function ReadingList({ books, setBooks, persist }) {
+function ReadingList({ books, setBooks, persist, callsign }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ title: "", author: "", date: "", verdict: "", image: "" });
   const fileRef = useRef();
@@ -443,6 +568,14 @@ function ReadingList({ books, setBooks, persist }) {
     setF({ title: "", author: "", date: "", verdict: "", image: "" });
     if (fileRef.current) fileRef.current.value = "";
     setOpen(false);
+  };
+  const addReview = async (bookId, score, text) => {
+    const review = { id: uid(), by: (callsign || "GHOST").toUpperCase(), score, text: (text || "").trim(), ts: Date.now() };
+    // pull the freshest list first so simultaneous raters don't clobber each other
+    let base = books;
+    try { const fresh = await store.get("books"); if (Array.isArray(fresh)) base = fresh; } catch {}
+    const next = base.map((bk) => (bk.id === bookId ? { ...bk, reviews: [...(bk.reviews || []), review] } : bk));
+    setBooks(next); persist("books", next);
   };
   const sorted = [...books].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
@@ -489,6 +622,7 @@ function ReadingList({ books, setBooks, persist }) {
                   <span className="redact" tabIndex={0}>{b.verdict}<span className="bar" /></span>
                 </div>
               )}
+              <BookReviews book={b} onAdd={addReview} />
             </div>
           </div>
         ))}
@@ -668,21 +802,24 @@ export default function App() {
   const [motto, setMotto] = useState(DEFAULT_MOTTO);
   const [callsign, setCallsign] = useState("");
   const [codename, setCodename] = useState("");
+  const [checkins, setCheckins] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   const persist = (key, val) => { store.set(key, val); };
 
   const loadAll = async () => {
-    const [b, m, u, mo, msg] = await Promise.all([
+    const [b, m, u, mo, msg, ci] = await Promise.all([
       store.get("books"), store.get("meetings"),
       store.get("unitName"), store.get("motto"),
       listMessages().catch(() => []),
+      store.get("checkins"),
     ]);
     if (b) setBooks(b);
     if (m) setMeetings(m);
     if (u) setUnit(u);
     if (mo) setMotto(mo);
     setMessages(msg || []);
+    if (Array.isArray(ci)) setCheckins(ci);
     setLoaded(true);
   };
 
@@ -705,11 +842,18 @@ export default function App() {
     try { await deleteMessage(id); } catch { loadAll(); }
   };
 
-  const enter = () => {
+  const enter = async () => {
     const name = makeCodename();
     setCodename(name);
     setCallsign(name);
     setAuthed(true);
+    // log the absurd callsign to a shared roster (last 25 kept, last 5 shown)
+    try {
+      const prev = (await store.get("checkins")) || [];
+      const next = [{ name, ts: Date.now() }, ...(Array.isArray(prev) ? prev : [])].slice(0, 25);
+      setCheckins(next);
+      store.set("checkins", next);
+    } catch {}
   };
 
   if (!authed) return <Gate onPass={enter} />;
@@ -742,6 +886,8 @@ export default function App() {
           <div className="codetag">▣ OPERATIVE ON DECK: <b>{codename}</b></div>
         </div>
 
+        <CheckinRoster list={checkins} />
+
         <div className="nav">
           {tabs.map(([k, label]) => (
             <button key={k} className={"tab" + (tab === k ? " on" : "")} onClick={() => setTab(k)}>{label}</button>
@@ -750,7 +896,7 @@ export default function App() {
 
         {!loaded && hasSupabase && <div className="empty" style={{ marginTop: 18 }}>DECRYPTING FILES…</div>}
 
-        {tab === "intel" && <ReadingList books={books} setBooks={setBooks} persist={persist} />}
+        {tab === "intel" && <ReadingList books={books} setBooks={setBooks} persist={persist} callsign={callsign} />}
         {tab === "rally" && <RallyPoints meetings={meetings} setMeetings={setMeetings} persist={persist} />}
         {tab === "comms" && (
           <Comms messages={messages} onSend={sendMessage} onScrub={scrubMessage}
