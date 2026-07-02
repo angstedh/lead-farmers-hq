@@ -343,6 +343,24 @@ label.fld{display:block; font-family:var(--cond); letter-spacing:.14em; font-siz
 .roster-list li::before{counter-increment:op; content:counter(op); font-family:var(--disp); color:var(--blaze); font-size:13px; min-width:16px}
 .roster-list b{color:var(--bone); font-weight:700}
 .roster-when{margin-left:auto; font-size:11px; letter-spacing:.1em; color:var(--steel)}
+.target{position:relative; overflow:hidden; background:var(--field2); border:3px solid var(--ink);
+  box-shadow:6px 6px 0 rgba(0,0,0,.45), inset 0 0 0 3px rgba(181,64,42,.28); padding:16px 18px; margin-top:16px}
+.target-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+.target-label{font-family:var(--disp); letter-spacing:.05em; font-size:19px; color:var(--blaze-lt)}
+.target-body{display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; margin-top:12px}
+.target-book{flex:1 1 260px; background:var(--tan); color:var(--ink); border:2px solid var(--ink); padding:12px 14px; box-shadow:3px 3px 0 rgba(0,0,0,.4)}
+.target-now{font-family:var(--cond); font-weight:700; letter-spacing:.16em; font-size:11px; color:var(--blaze)}
+.target-title{font-family:var(--disp); font-size:24px; line-height:1.06; margin:3px 0 2px}
+.target-author{font-family:var(--cond); letter-spacing:.06em; font-size:14px; color:#3b3623}
+.target-muster{flex:0 1 210px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;
+  background:var(--ink); border:2px solid var(--blaze); box-shadow:3px 3px 0 rgba(0,0,0,.4); padding:12px}
+.muster-label{font-family:var(--cond); font-weight:700; letter-spacing:.16em; font-size:11px; color:var(--steel)}
+.muster-date{font-family:var(--disp); font-size:19px; color:var(--bone); margin-top:5px; line-height:1.12}
+.muster-date.tbd{color:var(--blaze-lt); letter-spacing:.14em; font-size:26px}
+.target-form{background:#15160e; border:2px solid var(--olive); padding:16px; margin-top:12px}
+.tbd-check{font-family:var(--cond); font-weight:700; letter-spacing:.1em; font-size:13px; color:var(--tan);
+  display:inline-flex; align-items:center; gap:7px; cursor:pointer; padding-bottom:8px}
+.tbd-check input{width:16px; height:16px; accent-color:var(--blaze)}
 
 @media (max-width:560px){ .dossier{flex-direction:column} .cover{width:100%; height:200px} }
 @media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} #boom-layer{display:none} }
@@ -405,6 +423,78 @@ function Foliage() {
       style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
       {items}
     </svg>
+  );
+}
+
+/* ============================ NEXT TARGET ============================ */
+function fmtMeeting(dateStr) {
+  const dt = new Date(dateStr + "T00:00:00");
+  const wd = dt.toLocaleString("en", { weekday: "short" }).toUpperCase();
+  const mo = dt.toLocaleString("en", { month: "short" }).toUpperCase();
+  return `${wd} · ${mo} ${dt.getDate()}, ${dt.getFullYear()}`;
+}
+function NextTarget({ target, setTarget, persist }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState(target);
+  const start = () => { setF(target); setOpen(true); };
+  const save = () => {
+    const next = {
+      title: (f.title || "").trim(),
+      author: (f.author || "").trim(),
+      meetingDate: f.meetingTBD ? "" : (f.meetingDate || ""),
+      meetingTBD: !!f.meetingTBD,
+    };
+    setTarget(next); persist("target", next); setOpen(false);
+  };
+  const hasTarget = !!(target.title && target.title.trim());
+  const meeting = target.meetingTBD ? "TBD" : (target.meetingDate ? fmtMeeting(target.meetingDate) : "TBD");
+  return (
+    <div className="target">
+      <span className="stampbig" style={{ top: 10, right: -4, fontSize: 13, padding: "2px 8px" }}>PRIORITY</span>
+      <div className="target-head">
+        <span className="target-label">▣ CURRENT TARGET</span>
+        <button className="btn ghost sm" onClick={() => (open ? setOpen(false) : start())}>{open ? "CANCEL" : hasTarget ? "EDIT" : "+ SET TARGET"}</button>
+      </div>
+
+      {!open && (
+        <div className="target-body">
+          {hasTarget ? (
+            <>
+              <div className="target-book">
+                <div className="target-now">▸ NOW READING</div>
+                <div className="target-title">{target.title}</div>
+                {target.author && <div className="target-author">{target.author}</div>}
+              </div>
+              <div className="target-muster">
+                <div className="muster-label">NEXT MUSTER</div>
+                <div className={"muster-date" + (meeting === "TBD" ? " tbd" : "")}>{meeting}</div>
+              </div>
+            </>
+          ) : (
+            <div className="empty" style={{ flex: 1 }}>NO TARGET LOCKED. Set the current read and next muster.</div>
+          )}
+        </div>
+      )}
+
+      {open && (
+        <div className="target-form">
+          <div className="row">
+            <div><label className="fld">CURRENT READ (TITLE)</label><input className="in" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="e.g. Blood Meridian" /></div>
+            <div><label className="fld">AUTHOR</label><input className="in" value={f.author} onChange={(e) => setF({ ...f, author: e.target.value })} placeholder="Cormac McCarthy" /></div>
+          </div>
+          <div className="row">
+            <div>
+              <label className="fld">NEXT MEETING</label>
+              <input className="in" type="date" value={f.meetingDate} disabled={f.meetingTBD} onChange={(e) => setF({ ...f, meetingDate: e.target.value })} />
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <label className="tbd-check"><input type="checkbox" checked={!!f.meetingTBD} onChange={(e) => setF({ ...f, meetingTBD: e.target.checked })} /> DATE TBD</label>
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}><button className="btn" onClick={save}>LOCK TARGET</button></div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -803,16 +893,18 @@ export default function App() {
   const [callsign, setCallsign] = useState("");
   const [codename, setCodename] = useState("");
   const [checkins, setCheckins] = useState([]);
+  const [target, setTarget] = useState({ title: "", author: "", meetingDate: "", meetingTBD: false });
   const [loaded, setLoaded] = useState(false);
 
   const persist = (key, val) => { store.set(key, val); };
 
   const loadAll = async () => {
-    const [b, m, u, mo, msg, ci] = await Promise.all([
+    const [b, m, u, mo, msg, ci, tg] = await Promise.all([
       store.get("books"), store.get("meetings"),
       store.get("unitName"), store.get("motto"),
       listMessages().catch(() => []),
       store.get("checkins"),
+      store.get("target"),
     ]);
     if (b) setBooks(b);
     if (m) setMeetings(m);
@@ -820,6 +912,7 @@ export default function App() {
     if (mo) setMotto(mo);
     setMessages(msg || []);
     if (Array.isArray(ci)) setCheckins(ci);
+    if (tg && typeof tg === "object") setTarget({ title: "", author: "", meetingDate: "", meetingTBD: false, ...tg });
     setLoaded(true);
   };
 
@@ -885,6 +978,8 @@ export default function App() {
           <div className="motto">{motto}</div>
           <div className="codetag">▣ OPERATIVE ON DECK: <b>{codename}</b></div>
         </div>
+
+        <NextTarget target={target} setTarget={setTarget} persist={persist} />
 
         <CheckinRoster list={checkins} />
 
